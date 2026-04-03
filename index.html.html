@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>レーン管理</title>
+
+<style>
+body {
+  font-family: sans-serif;
+  margin: 0;
+  background: orange;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo {
+  width: 240px;
+  margin: 0;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: bold;
+  margin-top: 5px;
+  text-align: center;
+}
+
+/* ヘッダー */
+.header {
+  text-align: center;
+  padding: 15px;
+  background: white;
+}
+
+/* ロゴ */
+.logo {
+  width: 240px;
+}
+
+/* カード */
+.card {
+  background: white;
+  margin: 10px;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+select, input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.error {
+  color: red;
+}
+
+.record {
+  margin: 5px 0;
+  padding: 10px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+button {
+  background: #ff6600;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ログイン -->
+<div id="login" class="card">
+  <h2>ログイン</h2>
+  <input type="text" id="empId" placeholder="従業員ID">
+  <input type="password" id="pass" placeholder="パスワード">
+  <button onclick="check()">ログイン</button>
+  <p class="error" id="loginError"></p>
+</div>
+
+<!-- アプリ -->
+<div id="app" style="display:none;">
+
+<div class="header">
+  <img src="logo.jpg" class="logo">
+  <biv class="title">
+  <b>ラウンドワン JR尼崎駅前店</b>
+</div>
+
+<div class="card">
+  <p id="userName"></p>
+</div>
+
+<div class="card">
+  <h3>レーン選択</h3>
+  <select id="laneSelect">
+    <option value="">レーンを選択</option>
+  </select>
+  <p class="error" id="error"></p>
+</div>
+
+<div class="card">
+  <h3>記録入力</h3>
+  <input type="text" id="input" placeholder="内容を入力">
+</div>
+
+<div class="card">
+  <h3>トラブル記録</h3>
+  <div id="records"></div>
+</div>
+
+</div>
+
+<script>
+
+const users = [
+  { id: "20037139", pass: "0825", name: "南出月輝" },
+  { id: "0000", pass: "0000", name: "テスト" }
+];
+
+let currentUser = null;
+
+function check(){
+  const id = document.getElementById("empId").value;
+  const pass = document.getElementById("pass").value;
+
+  const user = users.find(u => u.id === id && u.pass === pass);
+
+  if(user){
+    currentUser = user;
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("userName").textContent =
+      user.name + "さん ログイン中";
+  }else{
+    document.getElementById("loginError").textContent =
+      "IDまたはパスワードが違います";
+  }
+}
+
+// レーン生成
+for(let i=1;i<=24;i++){
+  let option = document.createElement("option");
+  option.value = i;
+  option.textContent = "レーン " + i;
+  document.getElementById("laneSelect").appendChild(option);
+}
+
+let data = JSON.parse(localStorage.getItem("data")) || [];
+
+document.getElementById("input").addEventListener("keydown", function(e){
+  if(e.key === "Enter"){
+    add();
+  }
+});
+
+function add(){
+  let lane = document.getElementById("laneSelect").value;
+  let text = document.getElementById("input").value;
+  let error = document.getElementById("error");
+
+  error.textContent = "";
+
+  if(!lane){
+    error.textContent = "レーンを選択してください";
+    return;
+  }
+
+  if(!text) return;
+
+  lane = Number(lane);
+
+  let found = data.find(d => d.lane === lane && d.text === text);
+
+  if(found){
+    found.count++;
+  }else{
+    data.push({
+      id: Date.now(),
+      lane: lane,
+      text: text,
+      count: 1
+    });
+  }
+
+  document.getElementById("input").value = "";
+
+  save();
+  show();
+}
+
+function show(){
+  const div = document.getElementById("records");
+  div.innerHTML = "";
+
+  for(let i=1;i<=24;i++){
+    let laneData = data.filter(d => d.lane === i);
+
+    let html = `<div class="record"><b>レーン ${i}</b><br>`;
+
+    if(laneData.length === 0){
+      html += "内容：なし<br>回数：0";
+    }else{
+      laneData.forEach(d=>{
+        html += `
+        内容：${d.text}<br>
+        回数：${d.count}<br>
+        <button onclick="del(${d.id})">削除</button><br>
+        `;
+      });
+    }
+
+    html += "</div>";
+    div.innerHTML += html;
+  }
+}
+
+function del(id){
+  data = data.filter(d => d.id !== id);
+  save();
+  show();
+}
+
+function save(){
+  localStorage.setItem("data", JSON.stringify(data));
+}
+
+show();
+
+</script>
+
+</body>
+</html>
